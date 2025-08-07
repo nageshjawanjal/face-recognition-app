@@ -1,0 +1,351 @@
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import FaceCapture from './components/FaceCapture';
+import UserForm from './components/UserForm';
+import UserProfile from './components/UserProfile';
+import UserProfilePage from './components/UserProfilePage';
+import AdminDashboard from './components/AdminDashboard';
+import Footer from './components/Footer';
+import Dashboard from './components/Dashboard';
+import { faceAPI, userAPI } from './services/api';
+
+// Home Page Component
+const HomePage = () => {
+  const navigate = useNavigate();
+
+  const handleRecognizeFace = () => {
+    navigate('/recognize');
+  };
+
+  const handleRegisterUser = () => {
+    navigate('/register');
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center pb-20">
+      <div className="max-w-md w-full mx-auto p-8">
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 bg-blue-500 rounded-full mx-auto mb-4 flex items-center justify-center">
+            <svg className="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Face Recognition System</h1>
+          <p className="text-gray-600">Identify or register users with facial recognition</p>
+        </div>
+
+        <div className="space-y-4">
+          <button
+            onClick={handleRecognizeFace}
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center"
+          >
+            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Recognize Face
+          </button>
+
+          <button
+            onClick={handleRegisterUser}
+            className="w-full bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center"
+          >
+            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+            </svg>
+            Register New User
+          </button>
+
+          <Link
+            to="/admin"
+            className="w-full bg-gray-500 hover:bg-gray-600 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center"
+          >
+            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+            </svg>
+            Admin Dashboard
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Registration Page
+const RegisterPage = () => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [capturedImage, setCapturedImage] = useState(null);
+  const [result, setResult] = useState(null);
+
+  const checkIfFaceAlreadyRegistered = async (imageFile) => {
+    try {
+      const recognizeResponse = await faceAPI.recognizeFace(imageFile);
+      if (recognizeResponse.success && recognizeResponse.user_found) {
+        setResult({
+          type: 'error',
+          message: `Face already registered! User: ${recognizeResponse.user.name} (${recognizeResponse.user.email})`
+        });
+        return true;
+      }
+      return false;
+    } catch (error) {
+      setResult({
+        type: 'error',
+        message: 'Error while checking face registration.'
+      });
+      console.error('Face check error:', error);
+      return true; // To prevent registration on error
+    }
+  };
+  
+
+  const handleFaceCapture = async (imageFile) => {
+    const isRecognized = await checkIfFaceAlreadyRegistered(imageFile);
+    let capturedImage = null;
+    if (!isRecognized) {
+      capturedImage = imageFile;
+    }
+    setCapturedImage(capturedImage);
+  };
+
+  const handleFormSubmit = async (formData) => {
+    try {
+      setLoading(true);
+      setResult(null);
+
+      // Proceed with registration
+      const response = await userAPI.registerUser(formData, capturedImage);
+      if (response.success) {
+        setResult({
+          type: 'success',
+          user: response.user,
+          message: 'User registered successfully!'
+        });
+      } else {
+        setResult({
+          type: 'error',
+          message: response.error || 'Registration failed.'
+        });
+      }
+    } catch (error) {
+      setResult({
+        type: 'error',
+        message: 'Error registering user. Please try again.'
+      });
+      console.error('Registration error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8 pb-20">
+      <div className="max-w-4xl mx-auto px-4">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Register New User</h1>
+          <p className="text-gray-600">Capture your face and enter your information</p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-8">
+          <div>
+            <FaceCapture
+              onCapture={handleFaceCapture}
+              title="Capture Your Face"
+              buttonText="Capture"
+            />
+            {result && (
+              <div className="mt-4 p-4 rounded-lg">
+                {result.type === 'success' ? (
+                  <div className="bg-green-100 text-green-700 p-4 rounded-lg">
+                    <div className="flex items-center">
+                      <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      {result.message}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-red-100 text-red-700 p-4 rounded-lg">
+                    <div className="flex items-center">
+                      <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                      {result.message}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
+              <UserForm onSubmit={handleFormSubmit} submitText="Register User" />
+            </div>
+
+            {loading && (
+              <div className="mt-4 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                <p className="text-gray-600">Registering user...</p>
+              </div>
+            )}
+
+          </div>
+        </div>
+
+        <div className="text-center mt-8">
+          <button
+            onClick={() => navigate('/')}
+            className="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-6 rounded-lg transition-colors"
+          >
+            Back to Home
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+// Face Recognition Page
+const RecognizePage = () => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+
+  const handleFaceCapture = async (imageFile) => {
+    try {
+      setLoading(true);
+      setResult(null);
+      
+      const response = await faceAPI.recognizeFace(imageFile);
+      
+      if (response.success && response.user_found) {
+        setResult({
+          type: 'success',
+          user: response.user,
+          message: `Welcome back, ${response.user.name}!`
+        });
+      } else {
+        setResult({
+          type: 'not_found',
+          message: 'No matching user found. Please register first.'
+        });
+      }
+    } catch (error) {
+      setResult({
+        type: 'error',
+        message: 'Error recognizing face. Please try again.'
+      });
+      console.error('Recognition error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8 pb-20">
+      <div className="max-w-4xl mx-auto px-4">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Face Recognition</h1>
+          <p className="text-gray-600">Capture your face to identify yourself</p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-8">
+          <div>
+            <FaceCapture
+              onCapture={handleFaceCapture}
+              title="Capture Your Face"
+              buttonText="Recognize"
+            />
+          </div>
+
+          <div>
+            {loading && (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p className="text-gray-600">Processing face recognition...</p>
+              </div>
+            )}
+
+            {result && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                {result.type === 'success' ? (
+                  <div>
+                    <div className="text-center mb-4">
+                      <div className="w-16 h-16 bg-green-100 rounded-full mx-auto mb-3 flex items-center justify-center">
+                        <svg className="w-8 h-8 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <h3 className="text-xl font-semibold text-green-600">{result.message}</h3>
+                    </div>
+                    <UserProfile user={result.user} />
+                  </div>
+                ) : result.type === 'not_found' ? (
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-yellow-100 rounded-full mx-auto mb-3 flex items-center justify-center">
+                      <svg className="w-8 h-8 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-semibold text-yellow-600 mb-4">User Not Found</h3>
+                    <p className="text-gray-600 mb-4">{result.message}</p>
+                    <button
+                      onClick={() => navigate('/register')}
+                      className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-6 rounded-lg transition-colors"
+                    >
+                      Register Now
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-red-100 rounded-full mx-auto mb-3 flex items-center justify-center">
+                      <svg className="w-8 h-8 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-semibold text-red-600 mb-4">Error</h3>
+                    <p className="text-gray-600">{result.message}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="text-center mt-8">
+          <button
+            onClick={() => navigate('/')}
+            className="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-6 rounded-lg transition-colors"
+          >
+            Back to Home
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Main App Component
+const App = () => {
+  return (
+    <Router>
+      <div className="App">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/recognize" element={<RecognizePage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          {/* <Route path="/dashboard" element={<Dashboard />} /> */}
+          <Route path="/user/:id" element={<UserProfilePage />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+        </Routes>
+        <Footer />
+      </div>
+    </Router>
+  );
+};
+
+export default App;
