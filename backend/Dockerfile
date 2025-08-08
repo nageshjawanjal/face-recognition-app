@@ -1,19 +1,25 @@
-# ✅ Use a known working base image with dlib + OpenCV
-FROM belaytechnologies/face-recognition:latest
+# ✅ Use davisking's dlib image (public and includes dlib)
+FROM davisking/dlib:latest
+
+# Install pip & Python packages
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    libgl1 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
 
-# Copy requirements.txt and install other dependencies
+# Copy requirements and install Python dependencies
 COPY requirements.txt .
 
-# Install only your additional Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir --upgrade pip \
+    && pip3 install --no-cache-dir -r requirements.txt
 
-# Copy the rest of your code
+# Copy the rest of your app
 COPY . .
 
-# Expose the FastAPI port
+# Expose port for FastAPI
 EXPOSE 8000
 
 # Start the FastAPI app
