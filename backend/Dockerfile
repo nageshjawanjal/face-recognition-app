@@ -1,20 +1,20 @@
-# ✅ Use prebuilt image with dlib, face_recognition, and OpenCV
-FROM ghcr.io/corywalker/python-dlib:3.9
+# ✅ Use a known working base image with dlib + OpenCV
+FROM belaytechnologies/face-recognition:latest
 
 # Set working directory
 WORKDIR /app
 
-# Copy only requirements first for caching
+# Copy requirements.txt and install other dependencies
 COPY requirements.txt .
 
-# ✅ Install other required Python packages
+# Install only your additional Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy rest of your application code
+# Copy the rest of your code
 COPY . .
 
-# Expose app port
+# Expose the FastAPI port
 EXPOSE 8000
 
-# Start FastAPI server
+# Start the FastAPI app
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
